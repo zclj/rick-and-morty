@@ -1,0 +1,4 @@
+{:paths ["src/clj"]
+ :deps {io.pedestal/pedestal.service {:mvn/version "0.5.8"}
+        io.pedestal/pedestal.route   {:mvn/version "0.5.8"}
+        io.pedestal/pedestal.jetty   {:mvn/version "0.5.8"}}}
