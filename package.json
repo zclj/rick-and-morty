@@ -1,0 +1,26 @@
+{
+  "name": "rick-and-morty",
+  "version": "1.0.0",
+  "description": "Clojure(Script) fullstack example",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zclj/rick-and-morty.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zclj/rick-and-morty/issues"
+  },
+  "homepage": "https://github.com/zclj/rick-and-morty#readme",
+  "devDependencies": {
+    "shadow-cljs": "^2.11.7"
+  },
+  "dependencies": {
+    "react": "16.13.0",
+    "react-dom": "16.13.0"
+  }
+}

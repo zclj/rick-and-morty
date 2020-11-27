@@ -1,0 +1,11 @@
+;; shadow-cljs configuration
+{:source-paths
+ ["src/cljs"]
+
+ :dependencies
+ [[reagent/reagent "1.0.0-alpha2"]]
+
+ :builds {:client {:target :browser
+                   :modules {:main {:init-fn rick-and-morty.main/init!}}
+                   :output-dir "./resources/public/app"
+                   :asset-path "./app"}}}
