@@ -92,6 +92,10 @@
                               [:crux.tx/put {:crux.db/id :gizmo
                                              :name "gizmo"
                                              :desc "GiZmO description text in crux"}]])
+  
+  (crux/submit-tx @crux-node [[:crux.tx/put {:crux.db/id :stefan
+                                             :name "Stefan"
+                                             :desc "Stefan stefan stefan"}]])
 
   ;;
   )

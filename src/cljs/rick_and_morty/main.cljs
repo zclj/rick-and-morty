@@ -1,12 +1,44 @@
 (ns rick-and-morty.main
-  (:require [clojure.string :as string]
+  (:require [cljs.core.async :as async]
+            [clojure.string :as string]
+            [clojure.pprint :refer [pprint]]
+            [cljs-http.client :as http]
+            [reagent.core :as r]
             [reagent.dom :as rdom]))
+
+(defonce state (r/atom {}))
+
+(defn load-stuff!
+  []
+  (async/go (let [res-ch (http/get "/api/v1/stuff")
+                  res    (async/<! res-ch)]
+              (swap! state assoc :stuff (:body res)))))
+
+(defn state-presenter
+  []
+  (let [stuff (:stuff @state)]
+    [:div
+     [:ul (map 
+           (fn [s]
+             ^{:key (first s)}
+             [:div 
+              [:h1 (first s)] 
+              [:h2 (second s)]])
+           stuff)]]))
 
 (defn root
   []
   [:div
-   [:h1 (string/join " " ["Rick" "and" "Morty!"])]
-   [:p "This is an SPA developed in Clojurescript and Reagent (React)"]])
+   [:div.hero.is-info
+    [:div.hero-body
+     [:div.container
+      [:h1.title "Rick and Morty"]
+      [:h2.subtitle "This is an SPA developed in Clojurescript and Reagent (React)"]]]]
+   [:div.content.m-6
+    [:button.button.is-link
+     {:on-click load-stuff!}
+     "Get stuff"]
+    [state-presenter]]])
 
 (defn start
   []
@@ -14,7 +46,6 @@
 
 (defn ^:dev/after-load restart
   []
-  (println (meta #'restart))
   (start))
 
 (defn init!
