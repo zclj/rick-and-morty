@@ -1,6 +1,7 @@
 (ns rick-and-morty.main
   (:require [clojure.pprint :refer [pprint]]
             [crux.api :as crux]
+            [integrant.core :as ig]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :refer [body-params]]))
 
@@ -22,53 +23,39 @@
                             :body    (with-out-str (pprint context))}]
               (assoc context :response response)))})
 
-(def get-stuff
+(defn get-stuff
+  [node]
   {:name :get-stuff
    :enter (fn [context]
-            (let [stuff    (query-stuff @crux-node)
+            (let [stuff    (query-stuff node)
                   response {:status  200
                             :body    stuff}]
               (assoc context :response response)))})
 
-(def routes #{["/"     :get #'hello :route-name ::root]
-              ["/echo" :any #'echo  :route-name ::echo]
-              ["/api/v1/stuff" :get (conj json-interceptors #'get-stuff) :route-name ::get-stuff]})
+(defn routes
+  [node]
+  #{["/"     :get #'hello :route-name ::root]
+    ["/echo" :any #'echo  :route-name ::echo]
+    ["/api/v1/stuff" :get (conj json-interceptors (get-stuff node)) :route-name ::get-stuff]})
 
-(defonce pedestal (atom nil))
+(defmethod ig/init-key ::server
+  [_ {:keys [config database]}]
+  (println "Initializing" ::server)
+  (let [server-map {::http/type          :jetty
+                    ::http/host          "0.0.0.0"
+                    ::http/port          80
+                    ::http/join?         (:join? config)
+                    ::http/routes        (routes (:node database))
+                    ::http/resource-path "/public"}
+        server (http/create-server server-map)]
+    {:pedestal (http/start server)}))
 
-(defn start-pedestal
-  ([] (start-pedestal false))
-  ([join?]
-   (when (nil? @pedestal)
-     (let [server-map {::http/type          :jetty
-                       ::http/host          "0.0.0.0"
-                       ::http/port          80
-                       ::http/join?         join?
-                       ::http/routes        routes
-                       ::http/resource-path "/public"}
-           server (http/create-server server-map)]
-       (reset! pedestal (http/start server))))))
-
-(defn stop-pedestal
-  []
-  (when (some? @pedestal)
-    (http/stop (deref pedestal))
-    (reset! pedestal nil)))
+(defmethod ig/halt-key! ::server
+  [_ {:keys [pedestal]}]
+  (println "Shutting down" ::server)
+  (http/stop pedestal))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defonce crux-node (atom nil))
-
-(defn start-crux
-  []
-  (when (nil? @crux-node)
-    (reset! crux-node (crux/start-node {}))))
-
-(defn stop-crux
-  []
-  (when (some? @crux-node)
-    (.close @crux-node)
-    (reset! crux-node nil)))
 
 (defn query-stuff
   [node]
@@ -77,40 +64,46 @@
             :where [[e :name name]
                     [e :desc desc]]}))
 
-(comment
-  ;;
+(defmethod ig/init-key ::database
+  [_ _]
+  (println "Initializing" ::database)
+  {:node (crux/start-node {})})
 
-  (crux/submit-tx @crux-node [[:crux.tx/put {:crux.db/id :foo
-                                             :name "foo"
-                                             :desc "foO description text in crux"}]
-                              [:crux.tx/put {:crux.db/id :bar
-                                             :name "bar"
-                                             :desc "Bar description text in crux"}]
-                              [:crux.tx/put {:crux.db/id :baz
-                                             :name "baz"
-                                             :desc "BAZ description text in crux"}]
-                              [:crux.tx/put {:crux.db/id :gizmo
-                                             :name "gizmo"
-                                             :desc "GiZmO description text in crux"}]])
-  
-  (crux/submit-tx @crux-node [[:crux.tx/put {:crux.db/id :stefan
-                                             :name "Stefan"
-                                             :desc "Stefan stefan stefan"}]])
+(defmethod ig/halt-key! ::database
+  [_ {:keys [node]}]
+  (println "Shutting down" ::database)
+  (.close node))
 
-  ;;
-  )
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn component-map
+  [join?]
+  {::server   {:database (ig/ref ::database)
+               :config   {:join? join?}}
+   ::database {}})
+
+(defonce components (atom nil))
+
+(defn init-components
+  [join?]
+  (when (nil? @components)
+    (reset! components (ig/init (component-map join?)))))
+
+(defn halt-components
+  []
+  (when (some? @components)
+    (ig/halt! @components)
+    (reset! components nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn start
   [& {:keys [join?]}]
-  (start-crux)
-  (start-pedestal (true? join?)))
+  (init-components join?))
 
 (defn stop
   []
-  (stop-pedestal)
-  (stop-crux))
+  (halt-components))
 
 (defn reset
   []
@@ -120,3 +113,29 @@
 (defn -main
   [& args]
   (start :join? true))
+
+(comment
+  ;;
+
+  (crux/submit-tx (get-in @components [::database :node])
+                  [[:crux.tx/put {:crux.db/id :foo
+                                  :name "foo"
+                                  :desc "foO description text in crux"}]
+                   [:crux.tx/put {:crux.db/id :bar
+                                  :name "bar"
+                                  :desc "Bar description text in crux"}]
+                   [:crux.tx/put {:crux.db/id :baz
+                                  :name "baz"
+                                  :desc "BAZ description text in crux"}]
+                   [:crux.tx/put {:crux.db/id :gizmo
+                                  :name "gizmo"
+                                  :desc "GiZmO description text in crux"}]])
+
+  (crux/submit-tx (get-in @components [::database :node])
+                  [[:crux.tx/put {:crux.db/id :stefan
+                                  :name "Stefan"
+                                  :desc "Stefan stefan stefan"}]])
+
+  ;;
+  )
+

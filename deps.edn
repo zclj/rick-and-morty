@@ -2,5 +2,6 @@
  :deps {io.pedestal/pedestal.service {:mvn/version "0.5.8"}
         io.pedestal/pedestal.route   {:mvn/version "0.5.8"}
         io.pedestal/pedestal.jetty   {:mvn/version "0.5.8"}
-        
+
+        integrant/integrant          {:mvn/version "0.8.0"}
         juxt/crux-core               {:mvn/version "20.09-1.12.1-beta"}}}
