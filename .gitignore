@@ -6,3 +6,4 @@ resources/public/app
 
 node_modules
 .shadow-cljs
+.lsp

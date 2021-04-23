@@ -14,7 +14,7 @@
   []
   (app/halt-components))
 
-(defn reset
+(defn restart
   []
   (stop)
   (start))
@@ -25,6 +25,9 @@
 
 (comment
   ;;
+
+  (start)
+  (restart)
 
   (crux/submit-tx (get-in @app/components [:app/database :node])
                   [[:crux.tx/put {:crux.db/id :foo

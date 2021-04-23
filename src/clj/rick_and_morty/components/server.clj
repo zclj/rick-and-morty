@@ -1,8 +1,10 @@
 (ns rick-and-morty.components.server
-  (:require [clojure.pprint :refer [pprint]]
+  (:require [clojure.core.async :as async]
+            [clojure.pprint :refer [pprint]]
             [integrant.core :as ig]
             [io.pedestal.http :as http]
-            [io.pedestal.http.body-params :refer [body-params]]))
+            [io.pedestal.http.body-params :refer [body-params]]
+            [rick-and-morty.ram :as ram]))
 
 (def json-interceptors [(body-params) http/json-body])
 
@@ -28,11 +30,25 @@
                             :body    stuff}]
               (assoc context :response response)))})
 
+(defn load-characters
+  []
+  (async/thread
+   (let [characters (ram/get-characters)]
+     (pprint characters))))
+
+(def populate-interceptor
+  {:name ::populate-interceptor
+   :enter (fn [context]
+            (let [response {:status 201}]
+              (load-characters)
+              (assoc context :response response)))})
+
 (defn routes
   [query-stuff]
   #{["/"     :get #'hello :route-name ::root]
     ["/echo" :any #'echo  :route-name ::echo]
-    ["/api/v1/stuff" :get (conj json-interceptors (get-stuff query-stuff)) :route-name ::get-stuff]})
+    ["/api/v1/stuff" :get (conj json-interceptors (get-stuff query-stuff)) :route-name ::get-stuff]
+    ["/api/v1/populate" :post [populate-interceptor] :route-name ::populate]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; component lifecycle

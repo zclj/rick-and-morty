@@ -14,6 +14,12 @@
                   res    (async/<! res-ch)]
               (swap! state assoc :stuff (:body res)))))
 
+(defn populate
+  []
+  (async/go 
+   (let [res (async/<! (http/post "/api/v1/populate"))]
+     (js/console.log (with-out-str (pprint res))))))
+
 (defn state-presenter
   []
   (let [stuff (:stuff @state)]
@@ -35,6 +41,9 @@
       [:h1.title "Rick and Morty"]
       [:h2.subtitle "This is an SPA developed in Clojurescript and Reagent (React)"]]]]
    [:div.content.m-6
+    [:button.button
+     {:on-click populate}
+     "Populate DB"]
     [:button.button.is-link
      {:on-click load-stuff!}
      "Get stuff"]
