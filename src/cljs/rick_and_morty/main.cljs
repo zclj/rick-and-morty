@@ -10,7 +10,7 @@
 
 (defn load-stuff!
   []
-  (async/go (let [res-ch (http/get "/api/v1/stuff")
+  (async/go (let [res-ch (http/get "/api/v1/characters")
                   res    (async/<! res-ch)]
               (swap! state assoc :stuff (:body res)))))
 
@@ -46,7 +46,7 @@
      "Populate DB"]
     [:button.button.is-link
      {:on-click load-stuff!}
-     "Get stuff"]
+     "Get stuff!"]
     [state-presenter]]])
 
 (defn start

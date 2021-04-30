@@ -4,6 +4,7 @@
             [integrant.core :as ig]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :refer [body-params]]
+            [rick-and-morty.components.database :as db]
             [rick-and-morty.ram :as ram]))
 
 (def json-interceptors [(body-params) http/json-body])
@@ -21,34 +22,35 @@
                             :body    (with-out-str (pprint context))}]
               (assoc context :response response)))})
 
-(defn get-stuff
-  [query]
-  {:name :get-stuff
-   :enter (fn [context]
-            (let [stuff    (query)
-                  response {:status  200
-                            :body    stuff}]
-              (assoc context :response response)))})
-
 (defn load-characters
-  []
+  [db]
   (async/thread
-   (let [characters (ram/get-characters)]
-     (pprint characters))))
+    (let [characters (ram/get-characters)]
+      (db/store-characters db characters)
+      (pprint characters))))
 
-(def populate-interceptor
-  {:name ::populate-interceptor
+(defn populate-interceptor
+  [db]
+  {:name  ::populate-interceptor
    :enter (fn [context]
             (let [response {:status 201}]
-              (load-characters)
+              (load-characters db)
               (assoc context :response response)))})
 
+(defn characters-interceptor
+  [db]
+  {:name  ::characters-interceptor
+   :enter (fn [context]
+            (let [characters (db/query-characters db)]
+              (assoc context :response {:status 200
+                                        :body   characters})))})
+
 (defn routes
-  [query-stuff]
+  [db]
   #{["/"     :get #'hello :route-name ::root]
     ["/echo" :any #'echo  :route-name ::echo]
-    ["/api/v1/stuff" :get (conj json-interceptors (get-stuff query-stuff)) :route-name ::get-stuff]
-    ["/api/v1/populate" :post [populate-interceptor] :route-name ::populate]})
+    ["/api/v1/populate" :post [(populate-interceptor db)] :route-name ::populate]
+    ["/api/v1/characters" :get (conj json-interceptors (characters-interceptor db))]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; component lifecycle
@@ -61,7 +63,7 @@
                     ::http/host          "0.0.0.0"
                     ::http/port          80
                     ::http/join?         (:join? config)
-                    ::http/routes        (routes (:stuff/query database))
+                    ::http/routes        (routes (:node database))
                     ::http/resource-path "/public"}
         server (http/create-server server-map)]
     {:pedestal (http/start server)}))
