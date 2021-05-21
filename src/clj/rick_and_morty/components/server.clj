@@ -4,15 +4,24 @@
             [integrant.core :as ig]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :refer [body-params]]
+            [io.pedestal.interceptor :as interceptor]
+            [ring.util.response :as ring-resp]
             [rick-and-morty.components.database :as db]
             [rick-and-morty.ram :as ram]))
 
 (def json-interceptors [(body-params) http/json-body])
 
-(defn hello
-  [request]
-  {:status 200
-   :body "Rick and Morty app!!!"})
+(defn redirect-interceptor
+  [to]
+  {:name  ::redirect-interceptor
+   :enter (fn [context]
+            (assoc context :response (ring-resp/redirect to)))})
+
+(defn deps-interceptor
+  [deps]
+  (interceptor/interceptor
+   {:name  ::deps-interceptor
+    :enter (fn [context] (pprint deps) (merge context deps))}))
 
 (def echo
   {:name :echo
@@ -29,43 +38,46 @@
       (db/store-characters db characters)
       (pprint characters))))
 
-(defn populate-interceptor
-  [db]
+(def populate-interceptor
   {:name  ::populate-interceptor
    :enter (fn [context]
-            (let [response {:status 201}]
-              (load-characters db)
+            (let [response {:status 201}
+                  node     (get-in context [:database :node])]
+              (load-characters node)
               (assoc context :response response)))})
 
-(defn characters-interceptor
-  [db]
+(def characters-interceptor
   {:name  ::characters-interceptor
    :enter (fn [context]
-            (let [characters (db/query-characters db)]
+            (let [node       (get-in context [:database :node])
+                  characters (db/query-characters node)]
               (assoc context :response {:status 200
                                         :body   characters})))})
 
 (defn routes
-  [db]
-  #{["/"     :get #'hello :route-name ::root]
-    ["/echo" :any #'echo  :route-name ::echo]
-    ["/api/v1/populate" :post [(populate-interceptor db)] :route-name ::populate]
-    ["/api/v1/characters" :get (conj json-interceptors (characters-interceptor db))]})
+  []
+  #{["/"     :get (redirect-interceptor "/index.html") :route-name ::root]
+    ["/echo" :any [echo]  :route-name ::echo]
+    ["/api/v1/populate" :post [populate-interceptor] :route-name ::populate]
+    ["/api/v1/characters" :get (conj json-interceptors characters-interceptor)]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; component lifecycle
 ;; 
 
 (defmethod ig/init-key :app/server
-  [_ {:keys [config database]}]
+  [_ {:keys [config] :as deps}]
   (println "Initializing" :app/server)
-  (let [server-map {::http/type          :jetty
-                    ::http/host          "0.0.0.0"
-                    ::http/port          80
-                    ::http/join?         (:join? config)
-                    ::http/routes        (routes (:node database))
-                    ::http/resource-path "/public"}
-        server (http/create-server server-map)]
+  (let [server (->
+                {::http/type          :jetty
+                 ::http/host          "0.0.0.0"
+                 ::http/port          80
+                 ::http/join?         (:join? config)
+                 ::http/routes        (routes)
+                 ::http/resource-path "/public"}
+                (http/default-interceptors)
+                (update ::http/interceptors conj (deps-interceptor deps))
+                (http/create-server))]
     {:pedestal (http/start server)}))
 
 (defmethod ig/halt-key! :app/server

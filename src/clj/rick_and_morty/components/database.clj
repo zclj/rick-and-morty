@@ -25,6 +25,12 @@
           '{:find  [name]
             :where [[e :name name]]}))
 
+(defn query-characters-2
+  [db query]
+  (crux/q (crux/db db)
+          {:find  [(list 'pull 'e query)]
+           :where [['e :name]]}))
+
 (comment
   ;;
 
@@ -41,9 +47,16 @@
       :gender "Male"
       :episode ["https://rickandmortyapi.com/api/episode/10"]
       :location {:name "unknown", :url ""}}])
-  
+
+  (def n (crux/start-node {}))
+  (store-characters n sample)
+
   (mapv make-ch-tx sample)
   (make-ch-tx (first sample))
+
+
+
+  (query-characters-2 n [:name :status :gender])
 
   ;;
   )
