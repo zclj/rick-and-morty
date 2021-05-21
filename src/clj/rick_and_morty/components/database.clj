@@ -20,16 +20,15 @@
     (crux/submit-tx db ch-txs)))
 
 (defn query-characters
-  [db]
-  (crux/q (crux/db db)
-          '{:find  [name]
-            :where [[e :name name]]}))
-
-(defn query-characters-2
-  [db query]
-  (crux/q (crux/db db)
-          {:find  [(list 'pull 'e query)]
-           :where [['e :name]]}))
+  ([db]
+   (let [res (query-characters db [:name])]
+     (into #{} (map
+                (fn [[ch]] [(:name ch)])
+                res))))
+  ([db query]
+   (crux/q (crux/db db)
+           {:find  [(list 'pull 'e query)]
+            :where [['e :name]]})))
 
 (comment
   ;;
@@ -46,7 +45,21 @@
       :origin {:name "unknown", :url ""}
       :gender "Male"
       :episode ["https://rickandmortyapi.com/api/episode/10"]
-      :location {:name "unknown", :url ""}}])
+      :location {:name "unknown", :url ""}}
+     {:name "Ants in my Eyes Johnson"
+      :species "Human"
+      :type "Human with ants in his eyes"
+      :created "2017-11-04T22:34:53.659Z"
+      :status "unknown"
+      :id 20
+      :url "https://rickandmortyapi.com/api/character/20"
+      :image "https://rickandmortyapi.com/api/character/avatar/20.jpeg"
+      :origin {:name "unknown", :url ""}
+      :gender "Male"
+      :episode ["https://rickandmortyapi.com/api/episode/8"]
+      :location
+      {:name "Interdimensional Cable"
+       :url "https://rickandmortyapi.com/api/location/6"}}])
 
   (def n (crux/start-node {}))
   (store-characters n sample)
@@ -55,8 +68,16 @@
   (make-ch-tx (first sample))
 
 
+  (let [res #{[{:name "Antenna Rick", :status "unknown", :gender "Male"}]
+              [{:name "Ants in my Eyes Johnson", :status "unknown", :gender "Male"}]}]
+    (into #{} (map
+               (fn [[ch]] [(:name ch)])
+               res)))
 
-  (query-characters-2 n [:name :status :gender])
+  [(:name (first [{:name "Antenna Rick", :status "unknown", :gender "Male"}]))]
+
+  (query-characters n)
+  (query-characters n [:name :status :gender])
 
   ;;
   )

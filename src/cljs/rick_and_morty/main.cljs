@@ -10,9 +10,11 @@
 
 (defn load-stuff!
   []
-  (async/go (let [res-ch (http/get "/api/v1/characters")
+  (async/go (let [res-ch (http/post "/api/v1/characters" {:json-params [:name :gender]})
                   res    (async/<! res-ch)]
-              (swap! state assoc :stuff (:body res)))))
+              (js/console.log (with-out-str (pprint res)))
+              ;(swap! state assoc :stuff (:body res))
+              )))
 
 (defn populate
   []

@@ -21,7 +21,7 @@
   [deps]
   (interceptor/interceptor
    {:name  ::deps-interceptor
-    :enter (fn [context] (pprint deps) (merge context deps))}))
+    :enter (fn [context] (merge context deps))}))
 
 (def echo
   {:name :echo
@@ -49,8 +49,10 @@
 (def characters-interceptor
   {:name  ::characters-interceptor
    :enter (fn [context]
-            (let [node       (get-in context [:database :node])
-                  characters (db/query-characters node)]
+            (pprint (get-in context [:request :json-params]))
+            (let [query      (into [] (map keyword (get-in context [:request :json-params])))
+                  node       (get-in context [:database :node])
+                  characters (db/query-characters node query)]
               (assoc context :response {:status 200
                                         :body   characters})))})
 
@@ -59,7 +61,7 @@
   #{["/"     :get (redirect-interceptor "/index.html") :route-name ::root]
     ["/echo" :any [echo]  :route-name ::echo]
     ["/api/v1/populate" :post [populate-interceptor] :route-name ::populate]
-    ["/api/v1/characters" :get (conj json-interceptors characters-interceptor)]})
+    ["/api/v1/characters" :post (conj json-interceptors characters-interceptor)]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; component lifecycle
