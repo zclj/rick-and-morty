@@ -47,6 +47,9 @@
                   [[:crux.tx/put {:crux.db/id :stefan
                                   :name "Stefan"
                                   :desc "Stefan stefan stefan"}]])
+  
+
+  (seq {:foo {:baz 3} :bar 2})
 
   ;;
   )

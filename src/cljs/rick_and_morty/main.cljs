@@ -10,29 +10,47 @@
 
 (defn load-stuff!
   []
-  (async/go (let [res-ch (http/post "/api/v1/characters" {:json-params [:name :gender]})
-                  res    (async/<! res-ch)]
-              (js/console.log (with-out-str (pprint res)))
-              ;(swap! state assoc :stuff (:body res))
-              )))
+  (async/go (let [res-ch (http/post "/api/v1/characters" {:json-params [:id :name :gender :image]})
+                  res    (async/<! res-ch)
+                  chs    (reduce (fn [acc [{:keys [id] :as ch}]]
+                                   (assoc acc id ch))
+                                 {}
+                                 (:body res))]
+              (js/console.log (with-out-str (pprint chs)))
+              (swap! state assoc :characters chs))))
 
 (defn populate
   []
-  (async/go 
-   (let [res (async/<! (http/post "/api/v1/populate"))]
-     (js/console.log (with-out-str (pprint res))))))
+  (async/go
+    (let [res (async/<! (http/post "/api/v1/populate"))]
+      (js/console.log (with-out-str (pprint res))))))
+
+(defn ch-card
+  [ch]
+  [:div.card.mb-4
+   [:header.card-header
+    [:p.card-header-title (:name ch)]
+    [:a.card-header-icon
+     {:on-click (fn [] 
+                  (swap! state assoc-in [:characters (:id ch)] (assoc ch :expanded (not (:expanded ch)))))}
+     [:span.icon [:i.fa.fa-angle-down]]]]
+   (when (:expanded ch)
+     [:div.p-4
+      [:div.card-image
+       [:img {:src (:image ch)}]]
+      [:div.card-content
+       [:h2 (:name ch)]]])
+   ])
 
 (defn state-presenter
   []
-  (let [stuff (:stuff @state)]
+  (let [characters (:characters @state)]
     [:div
-     [:ul (map 
-           (fn [s]
-             ^{:key (first s)}
-             [:div 
-              [:h1 (first s)] 
-              [:h2 (second s)]])
-           stuff)]]))
+     [:ul (map
+           (fn [[id ch]]
+             ^{:key id}
+             [ch-card ch])
+           characters)]]))
 
 (defn root
   []
@@ -48,8 +66,12 @@
      "Populate DB"]
     [:button.button.is-link
      {:on-click load-stuff!}
-     "Get stuff!"]
-    [state-presenter]]])
+     "Get characters"]
+    [:button.button
+     {:on-click (fn [] (js/console.log (with-out-str (pprint @state))))}
+     "Dump state"]
+    [state-presenter]
+    ]])
 
 (defn start
   []
