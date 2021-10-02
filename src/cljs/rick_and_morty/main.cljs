@@ -33,9 +33,12 @@
     [:a.card-header-icon
      {:on-click (fn [] 
                   (swap! state assoc-in [:characters (:id ch)] (assoc ch :expanded (not (:expanded ch)))))}
-     [:span.icon [:i.fa.fa-angle-down]]]]
+     [:span.icon
+      (if (:expanded ch)
+        [:i.fa.fa-angle-up]
+        [:i.fa.fa-angle-down])]]]
    (when (:expanded ch)
-     [:div.p-4
+     [:div
       [:div.card-image
        [:img {:src (:image ch)}]]
       [:div.card-content

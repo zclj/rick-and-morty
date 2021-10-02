@@ -1,6 +1,9 @@
 (ns rick-and-morty.components.database
-  (:require [crux.api :as crux]
+  (:require [clojure.java.io :as io]
+            [xtdb.api :as xt]
             [integrant.core :as ig]))
+
+(defonce node-db (atom nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal fns
@@ -8,7 +11,7 @@
 
 (defn make-ch-tx
   [{:keys [id] :as ch}]
-  [:crux.tx/put (assoc ch :crux.db/id id)])
+  [::xt/put (assoc ch :xt/id id)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public db API
@@ -17,7 +20,7 @@
 (defn store-characters
   [db characters]
   (let [ch-txs (mapv make-ch-tx characters)]
-    (crux/submit-tx db ch-txs)))
+    (xt/submit-tx db ch-txs)))
 
 (defn query-characters
   ([db]
@@ -26,12 +29,14 @@
                 (fn [[ch]] [(:name ch)])
                 res))))
   ([db query]
-   (crux/q (crux/db db)
-           {:find  [(list 'pull 'e query)]
-            :where [['e :name]]})))
+   (xt/q (xt/db db)
+         {:find  [(list 'pull 'e query)]
+          :where [['e :name]]})))
 
 (comment
   ;;
+
+  (query-characters @node-db)
 
   (def sample
     [{:name "Antenna Rick"
@@ -61,7 +66,7 @@
       {:name "Interdimensional Cable"
        :url "https://rickandmortyapi.com/api/location/6"}}])
 
-  (def n (crux/start-node {}))
+  (def n (xt/start-node {}))
   (store-characters n sample)
 
   (mapv make-ch-tx sample)
@@ -82,6 +87,22 @@
   ;;
   )
 
+(defn start-xtdb! []
+  (letfn [(kv-store [dir]
+            {:kv-store {:xtdb/module 'xtdb.rocksdb/->kv-store
+                        :db-dir (io/file dir)
+                        :sync? true}})]
+    (xt/start-node
+     {:xtdb/tx-log         (kv-store "target/data/dev/tx-log")
+      :xtdb/document-store (kv-store "target/data/dev/doc-store")
+      :xtdb/index-store    (kv-store "target/data/dev/index-store")
+      })))
+
+(comment
+  (start-xtdb!)
+  ;;
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; component lifecycle
 ;; 
@@ -89,10 +110,12 @@
 (defmethod ig/init-key :app/database
   [_ _]
   (println "Initializing" :app/database)
-  (let [node (crux/start-node {})]
+  (let [node (start-xtdb!)]
+    (reset! node-db node)
     {:node node}))
 
 (defmethod ig/halt-key! :app/database
   [_ {:keys [node]}]
   (println "Shutting down" :app/database)
-  (.close node))
+  (.close node)
+  (reset! node-db nil))
