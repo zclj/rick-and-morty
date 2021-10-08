@@ -23,12 +23,9 @@
   (start :join? true))
 
 (comment
-  ;;
-
   (start)
   (stop)
   (restart)
 
   ;;
   )
-

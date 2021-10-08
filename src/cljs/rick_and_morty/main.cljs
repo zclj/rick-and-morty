@@ -27,7 +27,7 @@
 
 (defn ch-card
   [ch]
-  [:div.card.mb-4
+  [:div.card.mb-4.ch-card
    [:header.card-header
     [:p.card-header-title (:name ch)]
     [:a.card-header-icon
@@ -49,11 +49,11 @@
   []
   (let [characters (:characters @state)]
     [:div
-     [:ul (map
-           (fn [[id ch]]
-             ^{:key id}
-             [ch-card ch])
-           characters)]]))
+     [:ul#character-list (map
+                          (fn [[id ch]]
+                            ^{:key id}
+                            [ch-card ch])
+                          characters)]]))
 
 (defn root
   []
@@ -67,12 +67,15 @@
     [:button.button
      {:on-click populate}
      "Populate DB"]
-    [:button.button.is-link
+    [:button#load-btn.button.is-link
      {:on-click load-stuff!}
      "Get characters"]
     [:button.button
      {:on-click (fn [] (js/console.log (with-out-str (pprint @state))))}
      "Dump state"]
+    [:button#clear-btn.button
+     {:on-click (fn [] (swap! state dissoc :characters))}
+     "Clear"]
     [state-presenter]
     ]])
 

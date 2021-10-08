@@ -71,12 +71,13 @@
   [_ {:keys [config] :as deps}]
   (println "Initializing" :app/server)
   (let [server (->
-                {::http/type          :jetty
-                 ::http/host          "0.0.0.0"
-                 ::http/port          80
-                 ::http/join?         (:join? config)
-                 ::http/routes        (routes)
-                 ::http/resource-path "/public"}
+                {::http/type           :jetty
+                 ::http/host           "0.0.0.0"
+                 ::http/port           80
+                 ::http/join?          (:join? config)
+                 ::http/routes         (routes)
+                 ::http/resource-path  "/public"
+                 ::http/secure-headers {:content-security-policy-settings {}}}
                 (http/default-interceptors)
                 (update ::http/interceptors conj (deps-interceptor deps))
                 (http/create-server))]
