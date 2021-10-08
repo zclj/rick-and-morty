@@ -28,7 +28,7 @@
 
 (defn driver-fixture
   [f]
-  (api/with-firefox {} driver
+  (api/with-firefox-headless {} driver
     (binding [*driver* driver]
       (api/go *driver* "http://localhost")
       (f))))
@@ -40,6 +40,7 @@
     (wait-load-button-visible *driver*)
     (load-characters *driver*)
     (wait-characters-visible *driver*)
+    (api/screenshot *driver* "target/loaded-characters.png")
     (is "Character list loaded")))
 
 (deftest should-clear-characters
@@ -49,6 +50,7 @@
     (wait-characters-visible *driver*)
     (clear-characters *driver*)
     (wait-characters-absent *driver*)
+    (api/screenshot *driver* "target/cleared-characters.png")
     (is "Character list cleared")))
 
 
