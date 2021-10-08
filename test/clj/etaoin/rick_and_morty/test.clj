@@ -12,6 +12,18 @@
   (when-let [btn (api/query driver :clear-btn)]
     (api/click-el driver btn)))
 
+(defn wait-load-button-visible
+  [driver]
+  (api/wait-visible driver :load-btn))
+
+(defn wait-characters-visible
+  [driver]
+  (api/wait-visible driver {:class "card mb-4 ch-card"}))
+
+(defn wait-characters-absent
+  [driver]
+  (api/wait-absent driver {:class "card mb-4 ch-card"}))
+
 (def ^:dynamic *driver*)
 
 (defn driver-fixture
@@ -25,10 +37,19 @@
 
 (deftest should-load-characters
   (testing "...."
-    (api/wait-visible *driver* :load-btn)
+    (wait-load-button-visible *driver*)
     (load-characters *driver*)
-    (api/get-element-inner-html *driver* {:class "card mb-4 ch-card"})
-    (is true)))
+    (wait-characters-visible *driver*)
+    (is "Character list loaded")))
+
+(deftest should-clear-characters
+  (testing "...."
+    (wait-load-button-visible *driver*)
+    (load-characters *driver*)
+    (wait-characters-visible *driver*)
+    (clear-characters *driver*)
+    (wait-characters-absent *driver*)
+    (is "Character list cleared")))
 
 
 (comment
