@@ -1,13 +1,83 @@
 (ns rick-and-morty.components.server
   (:require [clojure.core.async :as async]
             [clojure.pprint :refer [pprint]]
+            [clojure.spec.alpha :as s]
+            [clojure.tools.logging :as log]
             [integrant.core :as ig]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :refer [body-params]]
             [io.pedestal.interceptor :as interceptor]
+            [malli.core :as m]
             [ring.util.response :as ring-resp]
             [rick-and-morty.components.database :as db]
             [rick-and-morty.ram :as ram]))
+
+;; clojure.spec
+
+(s/def :load-characters/attrs #{"id" "name" "gender" "image"})
+
+(s/def :load-characters/json-params
+       (s/coll-of :load-characters/attrs :distinct true))
+
+(s/def :load-characters/content-type #{"application/json"})
+
+(s/def :load-characters/request
+       (s/keys :req-un [:load-characters/json-params
+                        :load-characters/content-type]))
+
+(defn spec-validator
+  [spec x]
+  (if (s/valid? spec x)
+    {:success? true}
+    {:success? false
+     :message  (s/explain-str spec x)}))
+
+(comment
+  (require '[clojure.spec.gen.alpha :as gen])
+
+  (gen/sample (s/gen :load-characters/request) 5)
+  
+  ;;
+  )
+
+;; malli
+
+(def load-characters-spec
+  [:map 
+   [:content-type [:enum "application/json"]]
+   [:json-params [:sequential [:enum "id" "name" "gender" "image"]]]])
+
+(defn malli-validator
+  [spec x]
+  (if (m/validate spec x)
+    {:success? true}
+    {:success? false
+     :message (m/explain spec x)}))
+
+(comment
+  (require '[malli.generator :as mg])
+
+  (mg/generate load-characters-spec)
+  (m/validate load-characters-spec {:content-type "application/json"
+                                    :json-params ["id" "name" "id"]})
+  ;;
+  )
+
+;; impl
+
+(defn validate-interceptor
+  [validator]
+  {:name  ::validate-interceptor
+   :enter (fn [{:keys [request] :as context}]
+            (log/info :interceptor :validate)
+            (let [{:keys [success? message]} (validator request)]
+              (if success?
+                context
+                (do
+                  (log/info :interceptor :validate :failure message)
+                  (assoc context :response {:status  400
+                                            :headers {}
+                                            :body    message})))))})
 
 (def json-interceptors [(body-params) http/json-body])
 
@@ -60,8 +130,17 @@
   []
   #{["/"     :get (redirect-interceptor "/index.html") :route-name ::root]
     ["/echo" :any [echo]  :route-name ::echo]
-    ["/api/v1/populate" :post [populate-interceptor] :route-name ::populate]
-    ["/api/v1/characters" :post (conj json-interceptors characters-interceptor)]})
+    ["/api/v1/populate"
+     :post
+     [populate-interceptor]
+     :route-name ::populate]
+    ["/api/v1/characters"
+     :post
+     (conj json-interceptors 
+           (validate-interceptor (partial spec-validator :load-characters/request))
+          ;;  (validate-interceptor (partial malli-validator load-characters-spec))
+           characters-interceptor)
+     :route-name ::characters]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; component lifecycle
