@@ -3,7 +3,8 @@
  ["src/cljs"]
 
  :dependencies
- [[reagent/reagent "1.0.0-alpha2"]]
+ [[reagent/reagent "1.0.0-alpha2"]
+  [cljs-http/cljs-http "0.1.46"]]
 
  :builds {:client {:target :browser
                    :modules {:main {:init-fn rick-and-morty.main/init!}}

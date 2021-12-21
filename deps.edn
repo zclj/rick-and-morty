@@ -1,4 +1,31 @@
 {:paths ["src/clj" "resources"]
- :deps {io.pedestal/pedestal.service {:mvn/version "0.5.8"}
+ :deps {org.clojure/spec.alpha    {:mvn/version "0.2.194"}
+        metosin/malli {:mvn/version "0.6.2"}
+        
+        org.clojure/tools.logging      {:mvn/version "1.1.0"}
+        ch.qos.logback/logback-classic {:mvn/version "1.2.0"}
+        
+        io.pedestal/pedestal.service {:mvn/version "0.5.8"}
         io.pedestal/pedestal.route   {:mvn/version "0.5.8"}
-        io.pedestal/pedestal.jetty   {:mvn/version "0.5.8"}}}
+        io.pedestal/pedestal.jetty   {:mvn/version "0.5.8"}
+
+        integrant/integrant          {:mvn/version "0.8.0"}
+
+        com.xtdb/xtdb-core           {:mvn/version "1.19.0-beta1"}
+        com.xtdb/xtdb-rocksdb        {:mvn/version "1.19.0-beta1"}
+        
+        clj-http/clj-http {:mvn/version "3.10.3"}
+        cheshire/cheshire {:mvn/version "5.10.0"}}
+ 
+ :aliases {;;
+           
+           ;; test
+           :test {:extra-deps {org.clojure/test.check {:mvn/version "1.1.0"}}}
+           
+           ;; server
+           :server {:main-opts ["-m" "rick-and-morty.main"]}
+           
+           ;; client UI tests
+           :etaoin {:paths ["test/clj/etaoin"]
+                    :deps  {org.clojure/test.check {:mvn/version "1.1.0"}
+                            etaoin/etaoin          {:mvn/version "0.4.6"}}}}}

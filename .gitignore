@@ -1,8 +1,14 @@
+# clojure tooling
 .cpcache
 .nrepl-port
 .calva
-
-resources/public/app
-
-node_modules
+.clj-kondo
 .shadow-cljs
+.lsp
+
+# project output
+resources/public/app
+target
+
+# npm
+node_modules
